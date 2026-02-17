@@ -6,6 +6,22 @@
 // pragma is a compiler directive which works as LINKER
 
 //ONE TIME THING: WSA startup
+
+void handleClient(SOCKET clientSocket){
+    char buffer[1024];
+    while(true){
+        memset(buffer,0,sizeof(buffer));
+        int bytesReceived = recv(clientSocket, buffer, 1024, 0);
+        if(bytesReceived<=0){
+            std::cout<<"Client Disconnected\n";
+            break;
+        }
+        buffer[bytesReceived]='\0';
+        std::cout<<"Received is: "<<buffer<<std::endl;
+        send(clientSocket, buffer,bytesReceived,0);
+    }
+    closesocket(clientSocket);
+}
 int main(){
     WSADATA wsaData;
     int result = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -52,42 +68,17 @@ int main(){
     //ACCEPT
     //accept(socket, ipaddress, portaddress) - right now we dont care who we are accepting
     //so we use nullptr's
-    SOCKET clientSocket = accept(serverSocket, nullptr,nullptr);
-    if (clientSocket == INVALID_SOCKET) {
-        std::cerr << "Accept failed\n";
-        closesocket(serverSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    //ECHO server
-    char buffer[1024];//1024 bytes sized BUCKET
-
-    while (true) {
-    memset(buffer, 0, sizeof(buffer));
-
-    int bytesReceived = recv(clientSocket, buffer, 1024, 0);
-
-    if (bytesReceived == 0) {
-    std::cout << "Client disconnected\n";
-    break;
-    
-    }
-    if (bytesReceived < 0) {
-        std::cout << "Recv failed\n";
-        break;
+    while(true){
+        static int i=0;
+        SOCKET clientSocket = accept(serverSocket, nullptr,nullptr);
+        if (clientSocket == INVALID_SOCKET) {
+            std::cerr << "Accept failed\n";
+            continue;
+        }
+        std::cout << "Client connected "<<i++<<"!\n";
+        handleClient(clientSocket);
     }
 
 
-    std::cout << "Received: " << buffer << std::endl;
-    int bytesSent = send(clientSocket, buffer, bytesReceived, 0);
-    std::cout << "Echoed back " << bytesSent << " bytes\n";
-    }
-
-
-    //cleanup
-    closesocket(clientSocket);
-    closesocket(serverSocket);
-    WSACleanup();
     return 0;
 }
