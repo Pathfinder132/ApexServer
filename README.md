@@ -1,48 +1,59 @@
-ENDGOAL is to make a multi-threaded C++ server which can accept 1000+ requests simultaneously
-
 # ApexServer
 
-A C++ TCP server built using Winsock on Windows.
+A C++ TCP server built using Winsock on Windows.  
+Developed in structured phases to deeply understand socket programming and server architecture.
 
-## Phase 1 - Basic Echo Server
+---
+
+## Phase 1 – Basic Echo Server
 
 ### Features
-
 - Single-client TCP server
-- Client-server communication over localhost
+- Localhost communication (127.0.0.1:8000)
 - Echo functionality
 - Proper Winsock initialization and cleanup
 
-### Architecture
+### Server Flow
+WSAStartup → socket → bind → listen → accept → recv → send → cleanup
 
-Server:
+---
 
-- WSAStartup
-- socket()
-- bind()
-- listen()
-- accept()
-- recv()
-- send()
+## Phase 2 – Persistent Single-Threaded Server
 
-Client:
+### Improvements
+- Continuous accept() loop
+- handleClient() abstraction
+- Persistent server (does not exit after one client)
+- Proper client disconnect detection
 
-- WSAStartup
-- socket()
-- connect()
-- send()
-- recv()
+### Core Architecture
+```cpp
+while (true) {
+    SOCKET client = accept(serverSocket, nullptr, nullptr);
+    handleClient(client);  // blocks per client
+}
+```
 
-### How to Run
+### Behavior
+- Handles one client at a time
+- Server blocks if a connected client blocks in recv()
+- Foundation for multithreading (Phase 3)
 
-1. Compile server:
-   g++ apexserver.cpp -o ApexServer -lws2_32
+---
 
-2. Compile client:
-   g++ apexclient.cpp -o ApexClient -lws2_32
+## Build & Run
 
-3. Run server:
-   .\ApexServer.exe
+### Compile Server
+g++ apexserver.cpp -o ApexServer -lws2_32
 
-4. Run client in separate terminal:
-   .\ApexClient.exe
+### Compile Client
+g++ apexclient.cpp -o ApexClient -lws2_32
+
+### Run
+.\ApexServer.exe  
+.\ApexClient.exe  
+
+---
+
+## Next Phase
+Phase 3: Thread-per-client concurrency.
