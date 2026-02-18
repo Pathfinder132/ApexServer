@@ -1,26 +1,34 @@
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h> // required header files which contains only declaration
+#include <thread>
+#include <vector>
+#include <mutex>
+#include <algorithm>
 
+//-lws2_32 required to attach when about to compile
 #pragma comment(lib, "ws2_32.lib") //LINKER which links the functionality of winsock2 to its header file ( declarations ) and makes it usable
 // pragma is a compiler directive which works as LINKER
 
 //ONE TIME THING: WSA startup
 
-void handleClient(SOCKET clientSocket){
+/*std::vector<SOCKET> clients;
+std::mutex clientsMutex; //Mutex to protect the clients vector from simultaneous access by multiple threads (Race Conditions), its mutual exclusion so both thread1 and thread2 cant write into vector AT SAME TIME.*/
+
+void handleClient(SOCKET clientSocket, int threadID){
     char buffer[1024];
     while(true){
         memset(buffer,0,sizeof(buffer));
         int bytesReceived = recv(clientSocket, buffer, 1024, 0);
         if(bytesReceived<=0){
-            std::cout<<"Client Disconnected\n";
+            std::cout<<"Client "<<threadID<<" Disconnected\n";
             break;
         }
         buffer[bytesReceived]='\0';
-        std::cout<<"Received is: "<<buffer<<std::endl;
+        std::cout<<"Client "<<threadID<<": "<<buffer<<std::endl;
         send(clientSocket, buffer,bytesReceived,0);
     }
-    closesocket(clientSocket);
+    closesocket(clientSocket);  
 }
 int main(){
     WSADATA wsaData;
@@ -69,14 +77,18 @@ int main(){
     //accept(socket, ipaddress, portaddress) - right now we dont care who we are accepting
     //so we use nullptr's
     while(true){
-        static int i=0;
+        static int i=1;
         SOCKET clientSocket = accept(serverSocket, nullptr,nullptr);
         if (clientSocket == INVALID_SOCKET) {
             std::cerr << "Accept failed\n";
             continue;
         }
-        std::cout << "Client connected "<<i++<<"!\n";
-        handleClient(clientSocket);
+        std::cout << "Client "<<i<<" connected!\n";
+
+        std::thread clientThread(handleClient,clientSocket, i); // creating a thread for the current client, thread accepts (function, 1st arg, 2nd arg, 3rd arg........)
+        i++;
+        clientThread.detach(); // isolating the newly created thread so that server keeps accepting NEW clients
+        
     }
 
 

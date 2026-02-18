@@ -1,6 +1,7 @@
 #include <iostream>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <string>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -40,9 +41,15 @@ int main(){
     std::cout << "Connected to server!\n";
 
     //TESTING: SENDING MESSAGE
-    const char* message="hello from client!";
-    send(clientSocket, message, strlen(message),0);
+    //const char* message="hello from client!";
+    //send(clientSocket, message, strlen(message),0);
     
+    std::string msg;
+    while (msg!="end") {
+        std::getline(std::cin, msg);
+        send(clientSocket, msg.c_str(), msg.size(), 0);
+    }
+
     //RECEIVE data
     char buffer[1024];
     int bytesReceived=recv(clientSocket,buffer,1024,0);
