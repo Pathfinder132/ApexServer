@@ -5,6 +5,8 @@
 #include <vector>
 #include <mutex>
 #include <algorithm>
+#include <string>
+
 
 //-lws2_32 required to attach when about to compile
 #pragma comment(lib, "ws2_32.lib") //LINKER which links the functionality of winsock2 to its header file ( declarations ) and makes it usable
@@ -12,21 +14,38 @@
 
 //ONE TIME THING: WSA startup
 
-/*std::vector<SOCKET> clients;
-std::mutex clientsMutex; //Mutex to protect the clients vector from simultaneous access by multiple threads (Race Conditions), its mutual exclusion so both thread1 and thread2 cant write into vector AT SAME TIME.*/
+std::vector<SOCKET> clients;
+std::mutex clientsMutex; //Mutex to protect the clients vector from simultaneous access by multiple threads (Race Conditions), its mutual exclusion so both thread1 and thread2 cant write into vector AT SAME TIME.    
 
 void handleClient(SOCKET clientSocket, int threadID){
+    {
+        std::lock_guard<std::mutex> lock(clientsMutex);
+        clients.push_back(clientSocket);
+    }
     char buffer[1024];
     while(true){
-        memset(buffer,0,sizeof(buffer));
-        int bytesReceived = recv(clientSocket, buffer, 1024, 0);
+        memset(buffer,0,sizeof(buffer)); //resets or reallocates the buffer
+        int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
         if(bytesReceived<=0){
-            std::cout<<"Client "<<threadID<<" Disconnected\n";
+            std::cout<<"failed to receive bytes\n";
+            {
+                std::lock_guard<std::mutex> lock(clientsMutex); // locking here so that other threads' for loops dont point to garbage or wrong sockets
+                clients.erase(
+                std::remove(clients.begin(), clients.end(), clientSocket),
+                clients.end()
+                );
+            }    
             break;
         }
         buffer[bytesReceived]='\0';
-        std::cout<<"Client "<<threadID<<": "<<buffer<<std::endl;
-        send(clientSocket, buffer,bytesReceived,0);
+        std::string chatMsg = "Client "+std::to_string(threadID)+": "+buffer; // + operations and to_string operations in <string>
+        
+        {   // lock here so that all the vector modifications come AFTER send()
+            std::lock_guard<std::mutex> lock(clientsMutex);
+            for(auto client: clients){
+            send(client, chatMsg.c_str(), (int)chatMsg.size(), 0);
+            } 
+        }
     }
     closesocket(clientSocket);  
 }
@@ -88,7 +107,6 @@ int main(){
         std::thread clientThread(handleClient,clientSocket, i); // creating a thread for the current client, thread accepts (function, 1st arg, 2nd arg, 3rd arg........)
         i++;
         clientThread.detach(); // isolating the newly created thread so that server keeps accepting NEW clients
-        
     }
 
 

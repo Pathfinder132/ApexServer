@@ -2,6 +2,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <string>
+#include <thread>
 
 #pragma comment(lib, "ws2_32.lib")
 
@@ -44,22 +45,27 @@ int main(){
     //const char* message="hello from client!";
     //send(clientSocket, message, strlen(message),0);
     
+    std::thread receiveThread([&]{
+        char buffer[1024];
+        while(true){
+            int bytesReceived = recv(clientSocket, buffer, sizeof(buffer), 0);
+            if(bytesReceived<=0){
+                break;
+            }
+            std::cout.write(buffer,bytesReceived);
+            std::cout << std::endl;
+        }
+    });
+
     std::string msg;
-    while (msg!="end") {
+    while (true) {
         std::getline(std::cin, msg);
+        if (msg == "end") break;
         send(clientSocket, msg.c_str(), msg.size(), 0);
     }
-
-    //RECEIVE data
-    char buffer[1024];
-    int bytesReceived=recv(clientSocket,buffer,1024,0);
-
-    if (bytesReceived > 0) {
-    buffer[bytesReceived] = '\0';  // VERY IMPORTANT
-    std::cout << "Server replied: " << buffer << std::endl;
-    }
-
     closesocket(clientSocket);
+    receiveThread.detach();
+    
     WSACleanup();
     
     return 0;
